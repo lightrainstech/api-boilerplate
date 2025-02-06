@@ -1,6 +1,9 @@
 'use strict'
 const mongoose = require('mongoose')
 
+const bcrypt = require('bcrypt')
+const SALT_ROUNDS = 8
+
 const UserSchema = new mongoose.Schema(
   {
     email: {
@@ -9,20 +12,50 @@ const UserSchema = new mongoose.Schema(
       unique: true
     },
     name: { type: String, default: '--' },
-    phone: { type: String, unique: true, default: '--' },
-    country: { type: String, default: '--' },
-    otp: {
-      type: Number,
-      required: true,
-      default: 0
-    },
     isVerified: { type: Boolean, default: false },
-    isKycDone: { type: Boolean, default: false }
+    authToken: {
+      type: String,
+      default: ''
+    },
+    hashedPassword: {
+      type: String
+    },
+    salt: {
+      type: String,
+      default: ''
+    },
+    isActive: { type: Boolean, default: true }
   },
   {
     timestamps: true
   }
 )
+
+UserSchema.methods = {
+  makeSalt: function () {
+    return bcrypt.genSaltSync(SALT_ROUNDS)
+  },
+
+  encryptPassword: function (password) {
+    if (!password) return ''
+    return bcrypt.hashSync(password, this.salt)
+  },
+
+  authenticate: function (plainText) {
+    return bcrypt.compareSync(plainText, this.hashedPassword)
+  }
+}
+
+UserSchema.virtual('password')
+  .set(function (password) {
+    this._password = password
+    this.salt = this.makeSalt()
+    this.hashedPassword = this.encryptPassword(password)
+  })
+
+  .get(function () {
+    return this._password
+  })
 
 UserSchema.statics = {
   getUserById: async function (id) {
@@ -66,6 +99,15 @@ UserSchema.statics = {
     )
   },
 
+  authUserByEmail: async function (email) {
+    let query = { email, isActive: true }
+    const options = {
+      criteria: query,
+      select: 'email hashedPassword name isActive isEmailVerified'
+    }
+    return this.load(options)
+  },
+
   load: function (options, cb) {
     options.select = options.select || 'email name'
     return this.findOne(options.criteria).select(options.select).exec(cb)
@@ -85,13 +127,5 @@ UserSchema.statics = {
       .exec()
   }
 }
-
-UserSchema.index(
-  {
-    phone: 1,
-    country: 1
-  },
-  { unique: true }
-)
 
 module.exports = mongoose.model('User', UserSchema)

@@ -28,4 +28,15 @@ const start = async () => {
     process.exit(1)
   }
 }
+
+// Handle graceful shutdown
+const signals = ['SIGTERM', 'SIGINT']
+signals.forEach(signal => {
+  process.on(signal, async () => {
+    fastify.log.info(`Received ${signal}, closing server...`)
+    await fastify.close()
+    process.exit(0)
+  })
+})
+
 start()

@@ -1,97 +1,89 @@
 'use strict'
+require('dotenv').config()
 
 const fp = require('fastify-plugin')
-const generateResponse = require('@utils/generatorResponse')
+const generateResponse = require('../utils/generatorResponse')
 
-const DEFAULT_ERROR_CODE = 400
-const VALIDATION_ERROR_CODE = 422
-const UNAUTHORIZED_ERROR_CODE = 401
+module.exports = fp(
+  async function (fastify, opts) {
+    const PROCESSED = Symbol('processed')
 
-/**
- * Custom response handler plugin for Fastify
- * @param {FastifyInstance} fastify - Fastify instance
- * @param {Object} opts - Plugin options
- */
-module.exports = fp(async function (fastify, opts) {
-  // Removed next parameter
-  // Success response decorator
-  fastify.decorateReply('success', function (data = [], options = {}) {
-    const response = {
-      error: false,
-      message: options.message || 'Success',
-      statusCode: options.statusCode || 200,
-      ...options
-    }
+    fastify.decorateReply('success', function (data = [], response = {}) {
+      response.error = response.error || false
+      response.message = response.message || 'Success'
 
-    return this.type('application/json')
-      .code(response.statusCode)
-      .send(generateResponse(data, response))
-  })
+      const finalResponse = generateResponse(data, response)
+      finalResponse[PROCESSED] = true
 
-  // Error response decorator
-  fastify.decorateReply('error', function (options = {}) {
-    const response = {
-      error: true,
-      message: options.message || 'Error occurred',
-      statusCode: options.statusCode || DEFAULT_ERROR_CODE,
-      ...options
-    }
+      return this.code(200)
+        .header('Content-Type', 'application/json')
+        .serializer(payload => JSON.stringify(payload)) // Add custom serializer
+        .send(finalResponse)
+    })
 
-    return this.type('application/json')
-      .code(response.statusCode)
-      .send(generateResponse([], response))
-  })
+    fastify.decorateReply('error', function (data = [], response = {}) {
+      response.statusCode = response.statusCode || 400
+      response.error = response.error || true
+      response.message = response.message || 'Error'
 
-  // Global error handler
-  fastify.setErrorHandler(function (error, request, reply) {
-    const errorResponse = handleError(error)
-    return reply
-      .type('application/json')
-      .code(errorResponse.statusCode)
-      .send(generateResponse([], errorResponse))
-  })
-})
+      const finalResponse = generateResponse(data, response)
+      finalResponse[PROCESSED] = true
 
-/**
- * Handle different types of errors and return appropriate response
- * @param {Error} error - Error object
- * @returns {Object} Error response object
- */
-function handleError(error) {
-  // Validation errors
-  if (error.validation) {
-    return {
-      error: true,
-      statusCode: VALIDATION_ERROR_CODE,
-      message: formatValidationMessage(error.validation[0].message),
-      details: error.validation
-    }
+      return this.code(response.statusCode)
+        .header('Content-Type', 'application/json')
+        .serializer(payload => JSON.stringify(payload)) // Add custom serializer
+        .send(finalResponse)
+    })
+
+    fastify.setErrorHandler(function (error, request, reply) {
+      if (process.env.NODE_ENV != 'production') {
+        console.log('APP ERROR: ', error)
+      }
+
+      let resp = {}
+      if (error.validation) {
+        resp = {
+          error: true,
+          statusCode: 422,
+          message: `${error.validation[0].instancePath.slice(
+            1
+          )} ${error.validation[0].message
+            .substring(0)
+            .charAt(0)
+            .toUpperCase()}${error.validation[0].message.substring(1)}`
+        }
+        reply.status(422).send(generateResponse([], resp))
+      } else {
+        resp = {
+          error: true,
+          statusCode: 401,
+          message:
+            'An error occurred while processing your request. We apologize for the inconvenience. Please try again later or contact our support team for assistance.'
+        }
+        reply.status(401).send(generateResponse([], resp))
+      }
+      // reply.status(400).send(generateResponse([], resp))
+    })
+
+    // Remove the preSerialization hook since we're using a custom serializer
+    fastify.addHook('onSend', async (request, reply, payload) => {
+      if (payload && typeof payload === 'string') {
+        try {
+          const parsed = JSON.parse(payload)
+          if (parsed[PROCESSED]) {
+            delete parsed[PROCESSED]
+            return JSON.stringify(parsed)
+          }
+        } catch (e) {
+          // Not JSON or already processed
+          return payload
+        }
+      }
+      return payload
+    })
+  },
+  {
+    name: 'responseApi',
+    fastify: '>=4.0.0'
   }
-
-  // Known errors with status codes
-  if (error.statusCode) {
-    return {
-      error: true,
-      statusCode: error.statusCode,
-      message: error.message,
-      code: error.code
-    }
-  }
-
-  // Default error response
-  return {
-    error: true,
-    statusCode: DEFAULT_ERROR_CODE,
-    message: error.message || 'Internal Server Error',
-    stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-  }
-}
-
-/**
- * Format validation error message
- * @param {string} message - Raw validation message
- * @returns {string} Formatted message
- */
-function formatValidationMessage(message) {
-  return message.charAt(0).toUpperCase() + message.slice(1)
-}
+)

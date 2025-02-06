@@ -14,10 +14,16 @@ const swaggerConf = require('@configs/swagger')
 
 module.exports = function (fastify, opts, next) {
   fastify.register(cors, {
-    origin: '*',
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    origin: true,
+    allowedHeaders: [
+      'Authorization',
+      'Content-Type',
+      'x-project',
+      'x-admin-key'
+    ],
     credentials: true,
-    maxAge: 8400
+    maxAge: 8400,
+    preflightContinue: true
   })
   // Register swagger
   fastify.register(swagger, swaggerConf.options)
@@ -26,24 +32,13 @@ module.exports = function (fastify, opts, next) {
 
   fastify.register(Etag)
 
-  fastify.register(require('@fastify/jwt'), {
-    secret: process.env.JWT_SECRET
-  })
-
   fastify.register(autoload, {
     dir: path.join(__dirname, 'plugins')
   })
   fastify.register(autoload, {
     dir: path.join(__dirname, 'services/v1/'),
-    options: Object.assign({ prefix: '/api/v1' }, opts)
+    options: Object.assign({ prefix: '/v1' }, opts)
   })
 
-  fastify.decorate('authenticate', async function (request, reply) {
-    try {
-      await request.jwtVerify()
-    } catch (err) {
-      reply.send(err)
-    }
-  })
   next()
 }
