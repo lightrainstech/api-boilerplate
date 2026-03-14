@@ -14,7 +14,7 @@ const myCustomMessages = {
   authorizationTokenUntrusted: 'Untrusted authorization token, 2FA is required'
 }
 
-module.exports = fp(async function (fastify, opts) {
+module.exports = fp(async (fastify, opts) => {
   fastify.register(require('@fastify/jwt'), {
     secret: process.env.JWT_SECRET,
     cookie: {
@@ -31,15 +31,15 @@ module.exports = fp(async function (fastify, opts) {
     hook: 'onRequest'
   })
 
-  fastify.decorate('authenticate', async function (request, reply) {
+  fastify.decorate('authenticate', async (request, reply) => {
     try {
       return fastify.jwt.verify(request.cookies.token, async (err, decoded) => {
         if (err) {
           request.log.error('Token expired')
           reply.error('Token expired')
         } else {
-          let today = new Date()
-          let exp = new Date(today)
+          const today = new Date()
+          const exp = new Date(today)
           const nowInEpoch = parseInt(exp.getTime() / 1000)
           if (decoded.exp <= nowInEpoch) {
             reply.send('Token expired')

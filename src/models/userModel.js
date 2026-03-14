@@ -1,4 +1,3 @@
-'use strict'
 const mongoose = require('mongoose')
 
 const bcrypt = require('bcrypt')
@@ -32,9 +31,7 @@ const UserSchema = new mongoose.Schema(
 )
 
 UserSchema.methods = {
-  makeSalt: function () {
-    return bcrypt.genSaltSync(SALT_ROUNDS)
-  },
+  makeSalt: () => bcrypt.genSaltSync(SALT_ROUNDS),
 
   encryptPassword: function (password) {
     if (!password) return ''
@@ -59,7 +56,7 @@ UserSchema.virtual('password')
 
 UserSchema.statics = {
   getUserById: async function (id) {
-    let query = { _id: id }
+    const query = { _id: id }
     const options = {
       criteria: query
     }
@@ -67,7 +64,7 @@ UserSchema.statics = {
   },
 
   getUserByEmail: async function (email) {
-    let query = { email }
+    const query = { email }
     const options = {
       criteria: query
     }
@@ -100,7 +97,7 @@ UserSchema.statics = {
   },
 
   authUserByEmail: async function (email) {
-    let query = { email, isActive: true }
+    const query = { email, isActive: true }
     const options = {
       criteria: query,
       select: 'email hashedPassword name isActive isEmailVerified'

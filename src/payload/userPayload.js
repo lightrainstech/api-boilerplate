@@ -1,10 +1,9 @@
-'use strict'
 const S = require('fluent-json-schema')
 
 // Common schema components for reuse
 const commonFields = {
   phone: S.string()
-    .pattern('^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$')
+    .pattern('^[+]?[(]?[0-9]{3}[)]?[-s.]?[0-9]{3}[-s.]?[0-9]{4,6}$')
     .description('Phone number in international format'),
 
   country: S.string()

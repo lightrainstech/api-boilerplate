@@ -1,12 +1,12 @@
-'use strict'
 require('dotenv').config()
 
 const fp = require('fastify-plugin')
 const generateResponse = require('../utils/generatorResponse')
 
 module.exports = fp(
-  async function (fastify, opts) {
+  async fastify => {
     const PROCESSED = Symbol('processed')
+    const jsonSerializer = payload => JSON.stringify(payload)
 
     fastify.decorateReply('success', function (data = [], response = {}) {
       response.error = response.error || false
@@ -17,7 +17,7 @@ module.exports = fp(
 
       return this.code(200)
         .header('Content-Type', 'application/json')
-        .serializer(payload => JSON.stringify(payload)) // Add custom serializer
+        .serializer(jsonSerializer)
         .send(finalResponse)
     })
 
@@ -31,30 +31,28 @@ module.exports = fp(
 
       return this.code(response.statusCode)
         .header('Content-Type', 'application/json')
-        .serializer(payload => JSON.stringify(payload)) // Add custom serializer
+        .serializer(jsonSerializer)
         .send(finalResponse)
     })
 
-    fastify.setErrorHandler(function (error, request, reply) {
+    fastify.setErrorHandler((error, request, reply) => {
       if (process.env.NODE_ENV != 'production') {
         console.log('APP ERROR: ', error)
       }
 
-      let resp = {}
       if (error.validation) {
-        resp = {
+        const validation = error.validation[0]
+        const message =
+          validation.message.charAt(0).toUpperCase() +
+          validation.message.slice(1)
+        const resp = {
           error: true,
           statusCode: 422,
-          message: `${error.validation[0].instancePath.slice(
-            1
-          )} ${error.validation[0].message
-            .substring(0)
-            .charAt(0)
-            .toUpperCase()}${error.validation[0].message.substring(1)}`
+          message: `${validation.instancePath.slice(1)} ${message}`
         }
         reply.status(422).send(generateResponse([], resp))
       } else {
-        resp = {
+        const resp = {
           error: true,
           statusCode: 401,
           message:
@@ -62,7 +60,6 @@ module.exports = fp(
         }
         reply.status(401).send(generateResponse([], resp))
       }
-      // reply.status(400).send(generateResponse([], resp))
     })
 
     // Remove the preSerialization hook since we're using a custom serializer

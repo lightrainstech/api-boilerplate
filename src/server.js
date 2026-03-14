@@ -1,4 +1,3 @@
-'use strict'
 require('module-alias/register')
 
 // Read the .env file.

@@ -1,4 +1,3 @@
-'use strict'
 require('dotenv').config()
 // Require external modules
 const path = require('path')
@@ -12,7 +11,7 @@ const cors = require('@fastify/cors')
 // Import Swagger Options
 const swaggerConf = require('@configs/swagger')
 
-module.exports = function (fastify, opts, next) {
+module.exports = (fastify, opts, next) => {
   fastify.register(cors, {
     origin: true,
     allowedHeaders: [

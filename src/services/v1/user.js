@@ -1,14 +1,12 @@
-'use strict'
-
 const User = require('@models/userModel.js')
 const userPayload = require('@payloads/userPayload.js')
 const EXPIRES_IN = process.env.JWT_TOKEN_EXPIRY || '14d'
 
-module.exports = async function (fastify, opts) {
+module.exports = async (fastify, opts) => {
   fastify.post(
     '/signup',
     { schema: userPayload.otpSchema },
-    async function (request, reply) {
+    async (request, reply) => {
       try {
         const {
           name,
@@ -68,7 +66,7 @@ module.exports = async function (fastify, opts) {
   fastify.post(
     '/login',
     { schema: userPayload.loginSchema },
-    async function (request, reply) {
+    async (request, reply) => {
       const {
         email,
         emTyped = email.toString().toLowerCase(),
@@ -84,7 +82,7 @@ module.exports = async function (fastify, opts) {
           message: 'Invalid email or password, please retry!'
         })
       } else {
-        let isLoggedIn = await user.authenticate(password)
+        const isLoggedIn = await user.authenticate(password)
         if (isLoggedIn) {
           const jwt = fastify.jwt.sign(
             {
@@ -120,9 +118,9 @@ module.exports = async function (fastify, opts) {
   fastify.get(
     '/me',
     { schema: userPayload.getMeSchema, onRequest: fastify.authenticate },
-    async function (request, reply) {
+    async (request, reply) => {
       const { userId } = request.user
-      let user = await User.getUserById(userId)
+      const user = await User.getUserById(userId)
       return reply.success({ user }, { message: 'Success' })
     }
   )
