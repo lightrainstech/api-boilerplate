@@ -3,7 +3,7 @@ require('dotenv').config()
 const path = require('path')
 const autoload = require('@fastify/autoload')
 const swagger = require('@fastify/swagger')
-const swaggerUi = require('@fastify/swagger-ui')
+const swaggerUI = require('@fastify/swagger-ui')
 
 const Etag = require('@fastify/etag')
 const cors = require('@fastify/cors')
@@ -26,8 +26,11 @@ module.exports = (fastify, opts, next) => {
   })
   // Register swagger
   fastify.register(swagger, swaggerConf.options)
-  // Register swagger UI
-  fastify.register(swaggerUi, swaggerConf.uiOptions)
+  fastify.register(swaggerUI, {
+    routePrefix: swaggerConf.options.routePrefix,
+    exposeRoute: swaggerConf.options.exposeRoute
+  })
+  fastify.register(Etag)
 
   fastify.register(Etag)
 

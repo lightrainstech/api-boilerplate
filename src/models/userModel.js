@@ -1,5 +1,4 @@
 const mongoose = require('mongoose')
-
 const bcrypt = require('bcrypt')
 const SALT_ROUNDS = 8
 
@@ -124,5 +123,13 @@ UserSchema.statics = {
       .exec()
   }
 }
+
+UserSchema.index(
+  {
+    phone: 1,
+    country: 1
+  },
+  { unique: true }
+)
 
 module.exports = mongoose.model('User', UserSchema)
