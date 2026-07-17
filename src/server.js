@@ -4,7 +4,6 @@ require('module-alias/register')
 // Read the .env file.
 require('dotenv').config()
 
-require('v8-compile-cache')
 
 const fastify = require('fastify')({
   logger: {
